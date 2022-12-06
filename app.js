@@ -4,15 +4,22 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const app = express();
 
+const { engine } = require('express-handlebars')
 
-const {  DB: RestaurantDB } = require("./config/database")
-const  connectionString ="mongodb+srv://user1:Pooja@myprj.picp600.mongodb.net/sample_restaurants"
+// Enable handlebars engine for all files ending with .hbs
+app.engine('.hbs', engine());
+app.set('view engine', '.hbs');
+app.set('views', './views');
+
+const { DB: RestaurantDB } = require("./config/database");
+const restaurant = require("./models/restaurant");
+const connectionString = process.env.CONNECTION_STRING;
 
 
-//to support JSON entities and CORS
-app.use(bodyParser.json());
+//to support CORS
 app.use(cors());
-app.use(bodyParser.json({ type: 'application/vnd.api+json' })); 
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }))
 
 const HTTP_PORT = process.env.PORT || 8080;
 
@@ -35,11 +42,12 @@ app.get("/", (req, res) => {
 
 // Getting restaurant by page, PerPage & borough query
 app.get("/api/restaurants", (req, res) => {
-    if ((!req.query.page || !req.query.perPage)) res.status(500).json({ message: "Missing query parameters" })
+    if ((!req.query.page || !req.query.perPage))
+        res.status(500).json({ message: "Missing query params" })
     else {
         db.getAllRestaurants(req.query.page, req.query.perPage, req.query.borough)
             .then((data) => {
-                if (data.length === 0) res.status(204).json({ message: "No data returned" });
+                if (data.length === 0) res.status(204).json({ message: "No data is returned" });
                 else res.status(201).json(data);
             })
             .catch((err) => { res.status(500).json({ error: err }) })
@@ -55,23 +63,28 @@ app.get("/api/restaurants/:_id", (req, res) => {
 
 // Adding a new restaurant from req.body
 app.post("/api/restaurants", (req, res) => {
-    if (Object.keys(req.body).length === 0) res.status(500).json({ error: "Invalid body" })
+    if (Object.keys(req.body).length === 0) res.status(500).json({ error: "Invalid" })
     else {
         db.addNewRestaurant(req.body)
-            .then((data) => { res.status(201).json(data) })
+            .then((data) => {
+                res.status(201).json(data)
+            })
             .catch((err) => { res.status(500).json({ error: err }) })
     }
 });
 
+
 // Updating restaurant with req.body and the ID
-app.put("/api/restaurants/:_id", (req, res) => {
-    if (Object.keys(req.body).length === 0) res.status(500).json({ error: "Invalid body" })
-    else {
-        db.updateRestaurantById(req.body, req.params._id)
-            .then(() => { res.status(201).json({ message: `Successfuly updated restaurant ${req.params._id}` }) })
-            .catch((err) => { res.status(500).json({ error: err }) })
-    }
-});
+app.put("/api/restaurants/:restaurant_id", (req, res) => {
+    // if (Object.keys(req.body).length === 0) 
+    // res.status(500).json({ error: "Invalid body" })
+    // else {
+    db.updateRestaurantById(req.body, req.params._id)
+        .then(() => { res.status(201).json({ message: `Successfuly updated restaurant ${req.params.restaurant_id}` }) })
+        .catch((err) => { res.status(500).json({ error: err }) })
+}
+    //}
+);
 
 // Deleting restaurant by ID
 app.delete("/api/restaurants/:_id", (req, res) => {
@@ -79,4 +92,13 @@ app.delete("/api/restaurants/:_id", (req, res) => {
         .then(() => { res.status(201).json({ message: `Successfuly deleted restaurant ${req.params._id}` }) })
         .catch((err) => { res.status(500).json({ error: err }) })
 });
+
+app.get('/view-restaurants', async (req, res) => {
+    const data = (await db.getAllRestaurants(req.query.page || 1, req.query.perPage || 10)).map((data, index) => ({ slNo: index + 1, id: data.restaurant_id, restaurant_name: data.name, cuisine: data.cuisine, borough: data.borough }))
+    if (data) {
+        res.render('home', {
+            data,
+        });
+    }
+})
 

@@ -1,0 +1,23 @@
+<div class="flex justify-center items-center min-h-screen flex-col gap-3">
+    <h1 class="text-3xl">All Restaurant Information</h1>
+    <table class="border">
+        <tr>
+            <th>Sl No</th>
+            <th>Restaurant ID</th>
+            <th>Restaurant Name</th>
+            <th>Cuisine</th>
+            <th>Borough</th>
+        </tr>
+        {{#each data}}
+        <tr>
+            <td>
+                {{this.slNo}}
+            </td>
+            <td>{{this.id}}</td>
+            <td>{{this.restaurant_name}}</td>
+            <td>{{this.cuisine}}</td>
+            <td>{{this.borough}}</td>
+        </tr>
+        {{/each}}
+    </table>
+</div>
