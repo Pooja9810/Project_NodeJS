@@ -1,10 +1,31 @@
 // Import all required dependencies
+require("dotenv").config()
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const app = express();
 
+const jwt = require('jsonwebtoken')
+
 const { engine } = require('express-handlebars')
+
+function verifyToken(req, res, next) {
+    if ((req.path === "/login" && req.method === "POST") || req.path ==="/view-restaurants") {
+        next()
+        return
+    }
+    const bearerHeadr = req?.headers['authorization']
+    if (typeof bearerHeadr != 'undefined') {
+        const bearer = bearerHeadr.split(' ')
+        const bearerToken = bearer[1]
+        req.token = bearerToken
+        next()
+    } else {
+        res.status(401).json({ message: "User is not logged in" })
+    }
+}
+
+
 
 // Enable handlebars engine for all files ending with .hbs
 app.engine('.hbs', engine());
@@ -20,6 +41,7 @@ const connectionString = process.env.CONNECTION_STRING;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }))
+app.use(verifyToken)
 
 const HTTP_PORT = process.env.PORT || 8080;
 
@@ -36,9 +58,22 @@ db.initialize(connectionString)
     .catch((err) => {
         console.log(err);
     });
+
 app.get("/", (req, res) => {
     res.json({ message: "API Listening" })
 });
+
+app.post('/login', (req, res) => {
+    //Authenticated User
+    const username = req?.body?.username
+    if (username) {
+        const user = { name: username }
+        const accessToken = jwt.sign(user, process.env.SECRETKEY)
+        res.json({ accessToken: accessToken })
+    } else {
+        res.status(401).json({ message: "Please send a username in your body" })
+    }
+})
 
 // Getting restaurant by page, PerPage & borough query
 app.get("/api/restaurants", (req, res) => {
